@@ -40,6 +40,26 @@
 // @include           *://m.bilibili.com/anime/*
 // @include           *://m.bilibili.com/video/*
 // @include           *://m.bilibili.com/bangumi/play/*
+// @include           *://json.fongmi.cc/*
+// @include           *://super.playr.top/*
+// @include           *://www.ckplayer.vip/*
+// @include           *://jx.playerjy.com/*
+// @include           *://jx.xmflv.com/*
+// @include           *://jiexi.789jiexi.icu/*
+// @include           *://jx.hls.one/*
+// @include           *://www.jx.hls.one/*
+// @include           *://jx.2s0.cn/*
+// @include           *://bd.jx.cn/*
+// @include           *://www.pouyun.com/*
+// @include           *://jx.973973.xyz/*
+// @include           *://jx.nnxv.cn/*
+// @include           *://www.playm3u8.cn/*
+// @include           *://bfq.937auth.vip/*
+// @include           *://jx.77flv.cc/*
+// @include           *://video.isyour.love/*
+// @include           *://im1907.top/*
+// @include           *://yparse.ik9.cc/*
+// @include           *://jx.jsonplayer.com/*
 // @require           https://cdn.jsdmirror.com/npm/jquery@3.7.1/dist/jquery.min.js
 // @connect           api.bilibili.com
 // @grant             unsafeWindow
@@ -51,6 +71,143 @@
 // @charset		      UTF-8
 // @license           GPL License
 // ==/UserScript==
+
+const __SAFE_TRANSIT_PARSE_FRAME__ = (function () {
+    const parserHosts = new Set([
+        "json.fongmi.cc",
+        "super.playr.top",
+        "www.ckplayer.vip",
+        "jx.playerjy.com",
+        "jx.xmflv.com",
+        "jiexi.789jiexi.icu",
+        "jx.hls.one",
+        "www.jx.hls.one",
+        "jx.2s0.cn",
+        "bd.jx.cn",
+        "www.pouyun.com",
+        "jx.973973.xyz",
+        "jx.nnxv.cn",
+        "www.playm3u8.cn",
+        "bfq.937auth.vip",
+        "jx.77flv.cc",
+        "video.isyour.love",
+        "im1907.top",
+        "yparse.ik9.cc",
+        "jx.jsonplayer.com"
+    ]);
+
+    if (!parserHosts.has(window.location.hostname)) {
+        return false;
+    }
+
+    const adTextPattern = /博彩|澳门|赌场|棋牌|投注|真人|彩票|开奖|注册送|送彩金|威尼斯人|百家乐|老虎机|成人|裸聊|外围|下注|娱乐城|体育娱乐|六合彩|时时彩/i;
+    const adUrlPattern = /casino|bet|lottery|poker|adult|\.bet|\.vip|\.cc\/.*(ad|tg|go)|\/(ad|ads|gg|tg|jump|go)\b/i;
+    const protectedTags = new Set(["VIDEO", "IFRAME", "CANVAS"]);
+
+    function blockBadNavigation() {
+        try {
+            window.open = function () {
+                return null;
+            };
+        } catch (error) {}
+
+        document.addEventListener("click", function (event) {
+            const link = event.target.closest && event.target.closest("a[href]");
+            if (!link) return;
+
+            const href = link.getAttribute("href") || "";
+            const target = (link.getAttribute("target") || "").toLowerCase();
+            if (target === "_blank" || /^(intent|weixin|alipays?|mqq|qq|snssdk|bilibili|youku|iqiyi|tenvideo):/i.test(href)) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        }, true);
+    }
+
+    function isFixedOverlay(node) {
+        if (!(node instanceof HTMLElement) || protectedTags.has(node.tagName)) {
+            return false;
+        }
+
+        const style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+            return false;
+        }
+
+        const position = style.position;
+        if (position !== "fixed" && position !== "sticky" && position !== "absolute") {
+            return false;
+        }
+
+        const zIndex = Number.parseInt(style.zIndex, 10);
+        const rect = node.getBoundingClientRect();
+        const area = rect.width * rect.height;
+        const viewportArea = window.innerWidth * window.innerHeight;
+        const text = (node.innerText || node.textContent || "").replace(/\s+/g, "");
+        const hrefs = Array.from(node.querySelectorAll("a[href]")).map((link) => link.href).join(" ");
+
+        if (adTextPattern.test(text) || adUrlPattern.test(hrefs)) {
+            return true;
+        }
+
+        const looksLikeFloatingAd = Number.isFinite(zIndex) && zIndex >= 999 &&
+            rect.width >= 80 && rect.height >= 40 &&
+            area > 3000 && area < viewportArea * 0.7 &&
+            (node.querySelectorAll("img,a,button").length >= 1);
+
+        return looksLikeFloatingAd && /关闭|×|x|close|广告|AD/i.test(text + " " + node.className + " " + node.id);
+    }
+
+    function cleanAds(root = document) {
+        const candidates = root.querySelectorAll ? root.querySelectorAll("body *") : [];
+        candidates.forEach((node) => {
+            if (isFixedOverlay(node)) {
+                node.remove();
+            }
+        });
+    }
+
+    function installCleaner() {
+        blockBadNavigation();
+        cleanAds();
+
+        let count = 0;
+        const timer = window.setInterval(function repeatClean() {
+            cleanAds();
+            count += 1;
+            if (count > 40) {
+                window.clearInterval(timer);
+            }
+        }, 500);
+
+        const observer = new MutationObserver(function onMutation(records) {
+            records.forEach((record) => {
+                record.addedNodes.forEach((node) => {
+                    if (node instanceof HTMLElement) {
+                        if (isFixedOverlay(node)) {
+                            node.remove();
+                        } else {
+                            cleanAds(node);
+                        }
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", installCleaner, { once: true });
+    } else {
+        installCleaner();
+    }
+
+    return true;
+})();
 
 const util = (function () {
     let mediaCleanerStarted = false;
@@ -140,7 +297,7 @@ const superVip = (function () {
             {"name": "七七云解析", "type": "1,3", "url": "https://jx.77flv.cc/?url="},
             {"name": "芒果TV1", "type": "1,3", "url": "https://video.isyour.love/player/getplayer?url="},
             {"name": "M1907", "type": "1,3","url":"https://im1907.top/?jx="},
-			{"name": "Yparse", "type": "1,3", "url": "https://jx.yparse.com/index.php?url="},
+			{"name": "Yparse", "type": "1,3", "url": "https://yparse.ik9.cc/index.php?url="},
         ],
         playerContainers: [
             {
@@ -605,5 +762,7 @@ const superVip = (function () {
 })();
 
 (function () {
-    superVip.start();
+    if (!__SAFE_TRANSIT_PARSE_FRAME__) {
+        superVip.start();
+    }
 })();
