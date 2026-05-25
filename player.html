@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data:;
+      font-src 'self' data:;
+      connect-src 'none';
+      object-src 'none';
+      base-uri 'none';
+      form-action 'none';
+      frame-src https://json.fongmi.cc https://super.playr.top https://www.ckplayer.vip https://jx.playerjy.com https://jx.xmflv.com https://jiexi.789jiexi.icu:4433 https://jx.hls.one https://www.jx.hls.one https://jx.2s0.cn https://bd.jx.cn https://www.pouyun.com https://jx.973973.xyz https://jx.nnxv.cn https://www.playm3u8.cn https://bfq.937auth.vip https://jx.77flv.cc https://video.isyour.love https://im1907.top https://jx.yparse.com https://jx.jsonplayer.com;
+      child-src https://json.fongmi.cc https://super.playr.top https://www.ckplayer.vip https://jx.playerjy.com https://jx.xmflv.com https://jiexi.789jiexi.icu:4433 https://jx.hls.one https://www.jx.hls.one https://jx.2s0.cn https://bd.jx.cn https://www.pouyun.com https://jx.973973.xyz https://jx.nnxv.cn https://www.playm3u8.cn https://bfq.937auth.vip https://jx.77flv.cc https://video.isyour.love https://im1907.top https://jx.yparse.com https://jx.jsonplayer.com;
+    "
+  >
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='black'/%3E%3Cpath d='M25 18v28l23-14z' fill='%234cc9f0'/%3E%3C/svg%3E">
+  <title>安全播放中转页</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #000;
+      --panel: rgba(18, 18, 18, 0.82);
+      --line: rgba(255, 255, 255, 0.14);
+      --text: #f6f7f9;
+      --muted: #a7adb8;
+      --danger: #ff5a66;
+      --accent: #4cc9f0;
+      --button: rgba(255, 255, 255, 0.1);
+      --button-hover: rgba(255, 255, 255, 0.16);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-width: 320px;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .player-shell {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      background: #000;
+    }
+
+    iframe {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #000;
+    }
+
+    .state {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right))
+        max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+      background:
+        radial-gradient(circle at 50% 40%, rgba(76, 201, 240, 0.12), transparent 32%),
+        #000;
+      text-align: center;
+      z-index: 5;
+    }
+
+    .state[hidden] {
+      display: none;
+    }
+
+    .state-card {
+      width: min(92vw, 560px);
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+    }
+
+    .title {
+      margin: 0 0 10px;
+      font-size: clamp(20px, 5vw, 30px);
+      line-height: 1.18;
+      font-weight: 720;
+      letter-spacing: 0;
+    }
+
+    .message {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
+    }
+
+    .message strong {
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    .message.danger {
+      color: var(--danger);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .button {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--button);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      font-size: 14px;
+      line-height: 1;
+      padding: 12px 14px;
+      min-height: 42px;
+    }
+
+    .button:hover,
+    .button:focus-visible {
+      background: var(--button-hover);
+      outline: none;
+    }
+
+    .topbar {
+      position: fixed;
+      top: max(10px, env(safe-area-inset-top));
+      right: max(10px, env(safe-area-inset-right));
+      z-index: 4;
+      display: flex;
+      gap: 8px;
+      opacity: 0;
+      transition: opacity 160ms ease;
+      pointer-events: none;
+    }
+
+    body:hover .topbar,
+    body:focus-within .topbar,
+    .topbar.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.46);
+      color: var(--text);
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    }
+
+    .icon-button:hover,
+    .icon-button:focus-visible {
+      background: rgba(255, 255, 255, 0.14);
+      outline: none;
+    }
+
+    .spinner {
+      width: 30px;
+      height: 30px;
+      margin: 0 auto 16px;
+      border: 3px solid rgba(255, 255, 255, 0.18);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 900ms linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 560px) {
+      .state-card {
+        padding: 20px 16px;
+      }
+
+      .button {
+        width: 100%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner {
+        animation: none;
+      }
+
+      .topbar {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="player-shell" aria-label="安全播放器">
+    <iframe
+      id="playerFrame"
+      title="解析播放器"
+      sandbox="allow-scripts allow-forms allow-presentation"
+      allow="fullscreen; encrypted-media; picture-in-picture"
+      allowfullscreen
+      referrerpolicy="no-referrer"
+      loading="eager"
+    ></iframe>
+
+    <div class="topbar" id="topbar" aria-label="播放器操作">
+      <button class="icon-button" id="refreshBtn" type="button" title="刷新播放器" aria-label="刷新播放器">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <button class="icon-button" id="fullscreenBtn" type="button" title="全屏" aria-label="全屏">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <section class="state" id="state">
+      <div class="state-card">
+        <div class="spinner" id="spinner" aria-hidden="true"></div>
+        <h1 class="title" id="stateTitle">正在载入播放器</h1>
+        <p class="message" id="stateMessage">正在进行白名单校验，并通过受限 iframe 打开解析页面。</p>
+        <div class="actions" id="actions" hidden>
+          <button class="button" id="retryBtn" type="button">重试</button>
+          <button class="button" id="copyBtn" type="button">复制当前链接</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    /*
+      只允许这些解析源被 iframe 加载。
+      添加解析站时，同时修改这里和上方 CSP 的 frame-src / child-src。
+      建议只写可信解析站的 origin，不要写用户输入的视频站 origin。
+    */
+    const ALLOWED_PARSE_ORIGINS = new Set([
+      "https://json.fongmi.cc",
+      "https://super.playr.top",
+      "https://www.ckplayer.vip",
+      "https://jx.playerjy.com",
+      "https://jx.xmflv.com",
+      "https://jiexi.789jiexi.icu:4433",
+      "https://jx.hls.one",
+      "https://www.jx.hls.one",
+      "https://jx.2s0.cn",
+      "https://bd.jx.cn",
+      "https://www.pouyun.com",
+      "https://jx.973973.xyz",
+      "https://jx.nnxv.cn",
+      "https://www.playm3u8.cn",
+      "https://bfq.937auth.vip",
+      "https://jx.77flv.cc",
+      "https://video.isyour.love",
+      "https://im1907.top",
+      "https://jx.yparse.com",
+      "https://jx.jsonplayer.com"
+    ]);
+
+    const STRICT_SANDBOX = "allow-scripts allow-forms allow-presentation";
+    const COMPAT_SANDBOX = "allow-scripts allow-same-origin allow-forms allow-presentation";
+
+    const BLOCKED_PROTOCOLS = new Set([
+      "intent:",
+      "weixin:",
+      "alipays:",
+      "alipay:",
+      "mqq:",
+      "mqqapi:",
+      "qq:",
+      "snssdk1128:",
+      "bilibili:",
+      "youku:",
+      "iqiyi:",
+      "tenvideo:",
+      "tmast:"
+    ]);
+
+    const frame = document.getElementById("playerFrame");
+    const state = document.getElementById("state");
+    const spinner = document.getElementById("spinner");
+    const stateTitle = document.getElementById("stateTitle");
+    const stateMessage = document.getElementById("stateMessage");
+    const actions = document.getElementById("actions");
+    const retryBtn = document.getElementById("retryBtn");
+    const copyBtn = document.getElementById("copyBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+    const topbar = document.getElementById("topbar");
+
+let safePlayerUrl = "";
+let topbarTimer = 0;
+let loadingFallbackTimer = 0;
+
+    function blockParentPopups() {
+      const blockedOpen = function blockedOpen() {
+        console.warn("[safe-player] window.open 已被父页面拦截");
+        return null;
+      };
+
+      try {
+        window.open = blockedOpen;
+      } catch (error) {
+        console.warn("[safe-player] window.open 覆盖失败", error);
+      }
+    }
+
+    function blockParentBlankTargets() {
+      document.addEventListener("click", function onClick(event) {
+        const link = event.target.closest && event.target.closest("a[href]");
+        if (!link) return;
+
+        const rawHref = link.getAttribute("href") || "";
+        const rawTarget = (link.getAttribute("target") || "").toLowerCase();
+
+        if (rawTarget === "_blank" || isBlockedProtocol(rawHref)) {
+          event.preventDefault();
+          event.stopPropagation();
+          console.warn("[safe-player] 已拦截父页面新窗口或外部协议", rawHref);
+        }
+      }, true);
+
+      const observer = new MutationObserver(function normalizeLinks() {
+        document.querySelectorAll("a[target='_blank']").forEach(function removeBlankTarget(link) {
+          link.removeAttribute("target");
+          link.setAttribute("rel", "noreferrer noopener");
+        });
+      });
+
+      observer.observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ["target", "href"]
+      });
+    }
+
+    function protectTopNavigation() {
+      window.addEventListener("beforeunload", function beforeUnload(event) {
+        if (!safePlayerUrl) return;
+        event.preventDefault();
+        event.returnValue = "";
+      });
+    }
+
+    function isBlockedProtocol(rawValue) {
+      const value = String(rawValue || "").trim().toLowerCase();
+      if (!value) return false;
+      return BLOCKED_PROTOCOLS.has(value.split("?")[0].split("#")[0]) ||
+        Array.from(BLOCKED_PROTOCOLS).some(function startsWithProtocol(protocol) {
+          return value.startsWith(protocol);
+        });
+    }
+
+    function getUrlParam() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("url") || "";
+    }
+
+    function isCompatModeEnabled() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("compat") === "1";
+    }
+
+    function normalizeAndValidateUrl(rawUrl) {
+      if (!rawUrl) {
+        throw new Error("缺少 url 参数。示例：player.html?url=https%3A%2F%2Fjx.hls.one%2F%3Furl%3Dxxxxx");
+      }
+
+      const decodedUrl = rawUrl.trim();
+      if (isBlockedProtocol(decodedUrl)) {
+        throw new Error("已拒绝外部 APP 唤醒协议。");
+      }
+
+      let parsed;
+      try {
+        parsed = new URL(decodedUrl);
+      } catch (error) {
+        throw new Error("url 参数不是合法 URL。");
+      }
+
+      if (parsed.protocol !== "https:") {
+        throw new Error("只允许 https 解析地址。");
+      }
+
+      if (!ALLOWED_PARSE_ORIGINS.has(parsed.origin)) {
+        throw new Error("解析源不在白名单中：" + parsed.origin);
+      }
+
+      parsed.hash = "";
+      return parsed.toString();
+    }
+
+    function showLoading(message) {
+      spinner.hidden = false;
+      actions.hidden = true;
+      state.hidden = false;
+      stateTitle.textContent = "正在载入播放器";
+      stateMessage.className = "message";
+      stateMessage.textContent = message || "正在进行白名单校验，并通过受限 iframe 打开解析页面。";
+    }
+
+    function showError(message) {
+      frame.removeAttribute("src");
+      spinner.hidden = true;
+      actions.hidden = false;
+      state.hidden = false;
+      stateTitle.textContent = "无法打开解析页";
+      stateMessage.className = "message danger";
+      stateMessage.textContent = message;
+    }
+
+function loadPlayer() {
+  showLoading();
+  window.clearTimeout(loadingFallbackTimer);
+
+  try {
+    safePlayerUrl = normalizeAndValidateUrl(getUrlParam());
+    frame.setAttribute("sandbox", isCompatModeEnabled() ? COMPAT_SANDBOX : STRICT_SANDBOX);
+    frame.src = safePlayerUrl;
+    loadingFallbackTimer = window.setTimeout(function hideSlowLoadingMask() {
+      if (safePlayerUrl) state.hidden = true;
+    }, 3500);
+  } catch (error) {
+    safePlayerUrl = "";
+    showError(error.message || "解析地址校验失败。");
+      }
+    }
+
+    function requestFullscreen() {
+      const target = document.documentElement;
+      const request = target.requestFullscreen ||
+        target.webkitRequestFullscreen ||
+        target.msRequestFullscreen;
+
+      if (request) {
+        const result = request.call(target);
+        if (result && typeof result.catch === "function") {
+          result.catch(function ignoreFullscreenError() {});
+        }
+      }
+    }
+
+    function revealTopbar() {
+      topbar.classList.add("is-visible");
+      window.clearTimeout(topbarTimer);
+      topbarTimer = window.setTimeout(function hideTopbar() {
+        topbar.classList.remove("is-visible");
+      }, 1800);
+    }
+
+frame.addEventListener("load", function onFrameLoad() {
+  if (!safePlayerUrl) return;
+  window.clearTimeout(loadingFallbackTimer);
+  window.setTimeout(function hideLoading() {
+    state.hidden = true;
+  }, 320);
+    });
+
+    frame.addEventListener("error", function onFrameError() {
+      showError("iframe 加载失败，可能是解析站拒绝被嵌入，或 CSP / 白名单未包含该源。");
+    });
+
+    retryBtn.addEventListener("click", loadPlayer);
+
+    refreshBtn.addEventListener("click", function refreshFrame() {
+      if (!safePlayerUrl) return loadPlayer();
+      frame.src = safePlayerUrl;
+    });
+
+    fullscreenBtn.addEventListener("click", requestFullscreen);
+
+    copyBtn.addEventListener("click", function copyCurrentUrl() {
+      navigator.clipboard.writeText(window.location.href).then(function copied() {
+        copyBtn.textContent = "已复制";
+        window.setTimeout(function resetText() {
+          copyBtn.textContent = "复制当前链接";
+        }, 1200);
+      }).catch(function copyFailed() {
+        stateMessage.textContent = "复制失败，请手动复制地址栏链接。";
+      });
+    });
+
+    document.addEventListener("pointermove", revealTopbar, { passive: true });
+    document.addEventListener("touchstart", revealTopbar, { passive: true });
+    document.addEventListener("keydown", function onKeydown(event) {
+      revealTopbar();
+      if (event.key === "f" || event.key === "F") requestFullscreen();
+      if (event.key === "r" || event.key === "R") frame.src = safePlayerUrl;
+      if (event.key === "Escape") topbar.classList.add("is-visible");
+    });
+
+    blockParentPopups();
+    blockParentBlankTargets();
+    protectTopNavigation();
+    loadPlayer();
+  </script>
+</body>
+</html>
