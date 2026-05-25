@@ -97,6 +97,10 @@
       display: none;
     }
 
+    [hidden] {
+      display: none !important;
+    }
+
     .state-card {
       width: min(92vw, 560px);
       padding: 24px;
@@ -462,12 +466,12 @@ function loadPlayer() {
   window.clearTimeout(loadingFallbackTimer);
 
   try {
-    safePlayerUrl = normalizeAndValidateUrl(getUrlParam());
-    frame.setAttribute("sandbox", isCompatModeEnabled() ? COMPAT_SANDBOX : STRICT_SANDBOX);
-    frame.src = safePlayerUrl;
-    loadingFallbackTimer = window.setTimeout(function hideSlowLoadingMask() {
-      if (safePlayerUrl) state.hidden = true;
-    }, 3500);
+        safePlayerUrl = normalizeAndValidateUrl(getUrlParam());
+        frame.setAttribute("sandbox", isCompatModeEnabled() ? COMPAT_SANDBOX : STRICT_SANDBOX);
+        frame.src = safePlayerUrl;
+        loadingFallbackTimer = window.setTimeout(function hideSlowLoadingMask() {
+          if (safePlayerUrl) state.hidden = true;
+        }, 2200);
   } catch (error) {
     safePlayerUrl = "";
     showError(error.message || "解析地址校验失败。");
